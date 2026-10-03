@@ -1,0 +1,69 @@
+html.access-pending body { visibility: hidden; }
+
+body.access-locked { overflow: hidden; }
+body.access-locked > *:not(.access-gate) {
+  pointer-events: none;
+  user-select: none;
+  filter: blur(9px);
+}
+
+.access-gate {
+  position: fixed;
+  z-index: 9999;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+  background:
+    radial-gradient(circle at 72% 18%, rgba(87, 145, 165, .24), transparent 28rem),
+    rgba(14, 32, 61, .96);
+}
+
+.access-card {
+  width: min(430px, 100%);
+  padding: 32px;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 24px;
+  color: #f7f9fd;
+  background: rgba(26, 53, 91, .96);
+  box-shadow: 0 28px 80px rgba(4, 15, 35, .34);
+}
+.access-card .access-kicker {
+  margin: 0 0 .5rem;
+  color: #9dd9cf;
+  font-size: .74rem;
+  font-weight: 850;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.access-card h1 { margin: 0; max-width: none; color: #fff; font-size: 2rem; }
+.access-card > p { margin: .8rem 0 1.25rem; color: #cbd7e8; }
+.access-card label { display: block; margin-bottom: .4rem; font-size: .86rem; font-weight: 800; }
+.access-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .6rem; }
+.access-row input {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid #8ca5c7;
+  border-radius: 12px;
+  padding: .72rem .85rem;
+  color: #14243f;
+  background: #fff;
+  font: inherit;
+}
+.access-row button {
+  min-height: 48px;
+  color: #142a4f;
+  background: #fff;
+}
+.access-error { min-height: 1.5em; margin: .55rem 0 0 !important; color: #ffd59a !important; font-size: .88rem; }
+
+@media (max-width: 480px) {
+  .access-card { padding: 26px 22px; }
+  .access-row { grid-template-columns: 1fr; }
+  .access-row button { width: 100%; }
+}
+
+@media print {
+  .access-gate { display: none !important; }
+}
+

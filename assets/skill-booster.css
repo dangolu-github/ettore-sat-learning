@@ -1,0 +1,254 @@
+.domain-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  padding-top: 42px;
+}
+
+.domain-card {
+  display: flex;
+  min-height: 310px;
+  flex-direction: column;
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  text-decoration: none;
+  transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+
+.domain-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+  box-shadow: 0 18px 36px rgba(55, 50, 40, .08);
+}
+
+.domain-card:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
+}
+
+.domain-number,
+.domain-count {
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.domain-card h2 {
+  max-width: 14ch;
+  margin: 24px 0 0;
+  font-size: clamp(28px, 4vw, 42px);
+  line-height: 1;
+  letter-spacing: -.05em;
+}
+
+.domain-card p {
+  max-width: 46ch;
+  margin: 18px 0;
+  color: var(--muted);
+}
+
+.domain-card .domain-count {
+  margin-top: auto;
+  color: var(--green);
+}
+
+.domain-card .arrow {
+  margin-top: 12px;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.skill-section {
+  padding-top: 58px;
+}
+
+.skill-set-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.booster-practice-page {
+  width: min(1080px, calc(100% - 32px));
+}
+
+.booster-practice-hero {
+  margin: 0 auto;
+}
+
+.booster-inline-practice {
+  margin-top: 32px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+.booster-answer-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: center;
+  padding: 20px 22px;
+  border-bottom: 1px solid var(--line);
+}
+
+.booster-answer-heading h2 {
+  margin: 0;
+  font-size: 20px;
+  letter-spacing: -.03em;
+}
+
+.booster-answer-heading .eyebrow {
+  margin-bottom: 4px;
+}
+
+.booster-inline-note {
+  max-width: 36ch;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: right;
+}
+
+.booster-question-list {
+  display: grid;
+  gap: 18px;
+  padding: 18px;
+}
+
+body.portal-ready .booster-inline-card {
+  margin: 0;
+  padding: clamp(18px, 3vw, 30px) !important;
+  border-radius: 13px !important;
+}
+
+.booster-inline-card .qhead {
+  margin-bottom: 14px;
+}
+
+.booster-inline-card .qhead h2 {
+  font-size: 17px;
+}
+
+.booster-question-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid #e5e1d8;
+  border-radius: 9px;
+  background: white;
+}
+
+.answer-prompt {
+  margin: 16px 0 10px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+body.portal-ready .booster-inline-card .choices {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  margin-top: 0;
+}
+
+body.portal-ready .booster-inline-card .choice {
+  min-height: 48px;
+  justify-content: center;
+  padding: 10px !important;
+}
+
+body.portal-ready .booster-inline-card .choice-body {
+  justify-self: center;
+}
+
+@media (max-width: 760px) {
+  .domain-grid,
+  .skill-set-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .domain-card {
+    min-height: 250px;
+  }
+
+  .booster-practice-page {
+    width: min(100% - 8px, 1080px);
+  }
+
+  .booster-answer-heading {
+    display: grid;
+  }
+
+  .booster-inline-note {
+    text-align: left;
+  }
+
+  .booster-question-list {
+    padding: 4px;
+  }
+
+  body.portal-ready .booster-inline-card {
+    padding: 10px !important;
+  }
+}
+
+@media print {
+  .booster-question-list {
+    display: block;
+    padding: 0;
+  }
+
+  .booster-inline-card {
+    break-inside: avoid;
+    margin-bottom: 8px !important;
+  }
+}
+
+/* Answer-choice layout by length (2026-10-02) */
+/* The same rule applies on screen and in print. Letters and choices of a few words (longest up to 20 characters) stay four across; the mark sits under the choice so it never squeezes the text. */
+body.portal-ready .booster-inline-card .choices:not(.choices-stacked) .choice {
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-content: start;
+}
+
+body.portal-ready .booster-inline-card .choices:not(.choices-stacked) .answer-label {
+  grid-column: 1 / -1;
+  justify-self: center;
+  margin-top: 6px;
+}
+
+/* Sentence-length choices read one per line; the mark sits at the end of the line. */
+body.portal-ready .booster-inline-card .choices.choices-stacked {
+  grid-template-columns: 1fr !important;
+  gap: 10px !important;
+}
+
+body.portal-ready .booster-inline-card .choices-stacked .choice {
+  justify-content: stretch;
+  min-height: 0;
+  padding: 13px 15px !important;
+}
+
+body.portal-ready .booster-inline-card .choices-stacked .choice-body {
+  justify-self: start;
+}
+
+@media screen and (max-width: 600px) {
+  body.portal-ready .booster-inline-card .choices.choices-words {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  body.portal-ready .booster-inline-card .choices-stacked .choice {
+    grid-template-columns: 24px minmax(0, 1fr);
+  }
+
+  body.portal-ready .booster-inline-card .choices-stacked .answer-label {
+    grid-column: 2;
+    justify-self: start;
+    margin-top: 6px;
+  }
+}
