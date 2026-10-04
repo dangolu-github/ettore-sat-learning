@@ -283,3 +283,5 @@ textarea:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; bor
 .logbook-empty{padding:22px 24px;border:1px dashed #d8d3c8;border-radius:18px;background:#fffefa;color:#6d7069;font-size:15px;line-height:1.6}
 .logbook-empty strong{display:block;margin-bottom:6px;color:#252622;font-size:17px}
 .logbook-empty p{margin:0}
+a.round-start-card{text-decoration:none;color:inherit}
+a.round-start-card>span:last-child{color:var(--navy);font-size:12px;font-weight:800;white-space:nowrap}
