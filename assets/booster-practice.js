@@ -1,6 +1,26 @@
 (function () {
   'use strict';
 
+  // Teacher-only submission origin: assets/submission-origin.js (loaded beside this script) adds the approximate
+  // city, a device label, an opaque device ID and the time zone to a hand-in. It is warmed on load, never shown on
+  // this page, and a slow or failed lookup never blocks a submission.
+  (function loadSubmissionOrigin(current) {
+    if (window.PortalSubmissionOrigin) { window.PortalSubmissionOrigin.warm(); return; }
+    try {
+      var script = document.createElement('script');
+      script.src = new URL('submission-origin.js?v=20261012', current && current.src ? current.src : window.location.href).href;
+      script.async = true;
+      script.onload = function () { if (window.PortalSubmissionOrigin) window.PortalSubmissionOrigin.warm(); };
+      (document.head || document.documentElement).appendChild(script);
+    } catch (error) {}
+  })(document.currentScript);
+
+  function submissionOrigin() {
+    var api = window.PortalSubmissionOrigin;
+    if (!api || typeof api.collect !== 'function') return Promise.resolve(null);
+    return Promise.resolve(api.collect()).catch(function () { return null; });
+  }
+
   var config = Object.assign({ submissionEndpoint: (window.ETTORE_PORTAL_CONFIG || {}).submissionEndpoint || '' }, window.ETTORE_BOOSTER_CONFIG || {});
   function portalAccessToken() { return window.EttorePortalAccess ? window.EttorePortalAccess.getToken() : ''; }
   var portalReady = window.EttorePortalAccess && window.EttorePortalAccess.ready
@@ -561,9 +581,10 @@
     button.textContent = 'Sending practice…';
     var submittedAt = new Date().toISOString();
     state.environment = testMode ? 'test' : 'production';
+    var origin = await submissionOrigin();
     try {
       var response = await fetch(config.submissionEndpoint, {
-        method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(Object.assign({}, state, { action: 'submitHomework', accessToken: portalAccessToken(), teacherAnswerToken: teacherAnswerToken, saveId: state.submissionId, submittedAt: submittedAt }))
+        method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(Object.assign({}, state, { action: 'submitHomework', accessToken: portalAccessToken(), teacherAnswerToken: teacherAnswerToken, saveId: state.submissionId, submittedAt: submittedAt, submissionOrigin: origin }))
       });
       if (response.type !== 'opaque' && !response.ok) throw new Error('Submission failed');
       submitted = true;
