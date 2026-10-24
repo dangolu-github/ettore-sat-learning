@@ -202,3 +202,6 @@ body.portal-ready .options.choices-words .answer-label { grid-column: 1 / -1; ju
 @media screen and (max-width: 600px) {
   body.portal-ready .options.choices-words { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* Poems: one line of the source per line (assets/print-lines.js fits them to the page when printing). */
+[data-print-lines] > span { display: block; }

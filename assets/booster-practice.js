@@ -15,6 +15,18 @@
     } catch (error) {}
   })(document.currentScript);
 
+  // Poems print one source line per printed line: assets/print-lines.js (loaded beside this script) fits each
+  // line-preserved block to the page width just before printing.
+  (function loadPrintLines(current) {
+    if (window.PortalPrintLines) return;
+    try {
+      var script = document.createElement('script');
+      script.src = new URL('print-lines.js?v=20261024', current && current.src ? current.src : window.location.href).href;
+      script.async = true;
+      (document.head || document.documentElement).appendChild(script);
+    } catch (error) {}
+  })(document.currentScript);
+
   function submissionOrigin() {
     var api = window.PortalSubmissionOrigin;
     if (!api || typeof api.collect !== 'function') return Promise.resolve(null);
@@ -111,7 +123,18 @@
 
   function paragraphs(text) {
     return String(text || '').split(/\n\s*\n/).filter(function (part) { return part.trim(); }).map(function (part) {
-      return '<p>' + markup(part.trim()).replace(/\n/g, '<br>') + '</p>';
+      var lines = part.trim().split('\n');
+      return lines.length > 1 ? '<p data-print-lines>' + lineSpans(lines, markup) + '</p>' : '<p>' + markup(part.trim()) + '</p>';
+    }).join('');
+  }
+
+  // One <span> per source line of a poem; an underlined stretch that runs over a line break is closed and reopened.
+  function lineSpans(lines, toHtml) {
+    var open = false;
+    return lines.map(function (line) {
+      var html = (open ? '<u>' : '') + toHtml(line.trim());
+      open = (html.match(/<u>/g) || []).length > (html.match(/<\/u>/g) || []).length;
+      return '<span>' + html + (open ? '</u>' : '') + '</span>';
     }).join('');
   }
 
