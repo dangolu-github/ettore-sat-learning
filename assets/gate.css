@@ -63,8 +63,25 @@ body.access-locked > *:not(.access-gate) {
   .access-row button { width: 100%; }
 }
 
+/* Connection retry (2026-11-11): full-screen while the page has not opened yet, otherwise a small card at the
+   bottom that leaves the page usable. */
+.access-retry .access-row { grid-template-columns: auto; justify-content: start; }
+.access-retry-banner {
+  position: fixed;
+  z-index: 9999;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+.access-retry-banner .access-card { width: min(520px, 100%); padding: 18px 22px; pointer-events: auto; }
+.access-retry-banner .access-card h1 { font-size: 1.15rem; }
+.access-retry-banner .access-card > p { margin: .4rem 0 .8rem; }
+
 @media print {
-  .access-gate { display: none !important; }
+  .access-gate, .access-retry { display: none !important; }
 }
 
 /* responsive-retrofit:core-20261104 */

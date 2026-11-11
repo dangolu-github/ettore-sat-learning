@@ -4,10 +4,14 @@
   const deviceTokenKey = 'ettore-sat-device-token-v1';
   const tokenKey = 'ettore-sat-access-token';
   const expiryKey = 'ettore-sat-access-expires-at';
-  const expectedHash = '9140365e9ecf7dc63c5bd38ff54c099c695ad2e5c0177c9434c31535642855c8';
+  const teacherTestKey = 'ettore-sat-teacher-test-token';
+  // The course password is checked by the course service only; this page holds no copy or hash of it.
+  // A remembered browser keeps its credential: only an explicit "not recognized" or "signed out" answer asks for the
+  // password again. A connection problem keeps the credential and offers Try again.
   const portalConfig = window.ETTORE_PORTAL_CONFIG || {};
   let resolveReady;
   let renewal = null;
+  let retryTimer = null;
   const ready = new Promise((resolve) => { resolveReady = resolve; });
 
   window.EttorePortalAccess = {
@@ -17,7 +21,9 @@
     getToken: () => {
       try { return window.sessionStorage.getItem(tokenKey) || ''; }
       catch { return ''; }
-    }
+    },
+    getDeviceToken: () => getDeviceToken(),
+    teacherTestToken: () => readStorage(window.sessionStorage, teacherTestKey)
   };
 
   const readStorage = (storage, key) => {
@@ -32,6 +38,24 @@
 
   const getDeviceToken = () => readStorage(window.localStorage, deviceTokenKey);
 
+  // Saves and submissions to the course service also carry the remembered-browser credential, so an expired short
+  // access token never loses work or asks for the password (the service accepts either).
+  if (typeof window.fetch === 'function' && portalConfig.submissionEndpoint) {
+    const nativeFetch = window.fetch.bind(window);
+    window.fetch = (resource, init) => {
+      try {
+        if (init && typeof init.body === 'string' && String(resource).indexOf(portalConfig.submissionEndpoint) === 0) {
+          const body = JSON.parse(init.body);
+          const device = getDeviceToken();
+          if (body && typeof body === 'object' && 'accessToken' in body && !body.deviceToken && device) {
+            init = Object.assign({}, init, { body: JSON.stringify(Object.assign(body, { deviceToken: device })) });
+          }
+        }
+      } catch {}
+      return nativeFetch(resource, init);
+    };
+  }
+
   const setAccess = (token, deviceToken, expiresIn) => {
     writeStorage(window.sessionStorage, sessionAccessKey, 'granted');
     if (token) writeStorage(window.sessionStorage, tokenKey, token);
@@ -40,21 +64,24 @@
     if (deviceToken) writeStorage(window.localStorage, deviceTokenKey, deviceToken);
   };
 
+  const clearDevice = () => {
+    try { window.localStorage.removeItem(deviceTokenKey); window.localStorage.removeItem(trustedBrowserKey); } catch {}
+    try { window.sessionStorage.removeItem(tokenKey); window.sessionStorage.removeItem(expiryKey); } catch {}
+  };
+
+  // Teacher links bring the teacher's remembered-browser credential and, for test links, the teacher test token in the
+  // fragment. Both are kept in this browser and removed from the address bar at once.
   const consumeTrustedDevice = () => {
     try {
       const parameters = new URLSearchParams(window.location.hash.replace(/^#/, ''));
       const token = String(parameters.get('ettore-trusted-device') || '').replace(/[^a-f0-9]/gi, '').slice(0, 128);
-      if (!token) return '';
+      const teacherTest = String(parameters.get('teacherAnswerToken') || '').replace(/[^a-f0-9]/gi, '').slice(0, 64);
+      if (!token && !teacherTest) return '';
+      if (teacherTest) writeStorage(window.sessionStorage, teacherTestKey, teacherTest);
       window.history.replaceState(null, '', window.location.pathname + window.location.search);
       return token;
     }
     catch { return ''; }
-  };
-
-  const digest = async (value) => {
-    const data = new TextEncoder().encode(value);
-    const hash = await crypto.subtle.digest('SHA-256', data);
-    return Array.from(new Uint8Array(hash), (byte) => byte.toString(16).padStart(2, '0')).join('');
   };
 
   const requestData = (action, parameters) => new Promise((resolve, reject) => {
@@ -86,9 +113,17 @@
     document.head.appendChild(script);
   });
 
+  // A refusal is explicit only when the service says the browser is unknown or signed out; anything else
+  // (no answer, a timeout, a temporary fault) keeps the stored credential.
+  const explicitRefusal = (data) => Boolean(data && data.ok === false && (data.reason === 'unknown' || data.reason === 'revoked' || /not recognized|signed out/i.test(data.error || '')));
+
   const requestAccess = async (action, parameters) => {
     const data = await requestData(action, parameters);
-    if (!data || !data.ok || !data.accessToken) throw new Error((data && data.error) || 'Access could not be confirmed.');
+    if (!data || !data.ok || !data.accessToken) {
+      const error = new Error((data && data.error) || 'Access could not be confirmed.');
+      error.explicit = action === 'renewAccess' ? explicitRefusal(data) : Boolean(data && data.ok === false);
+      throw error;
+    }
     return data;
   };
 
@@ -107,12 +142,18 @@
     }
     renewal = renewAccess(device).then((access) => {
       setAccess(access.accessToken, device, access.expiresIn);
+      hideRetry();
       reveal();
       resolveReady();
       return access.accessToken;
-    }).catch(() => {
-      showGate();
-      throw new Error('We could not reconnect. Check your connection and enter your course password again. Your answers are still here.');
+    }).catch((error) => {
+      if (error && error.explicit) {
+        clearDevice();
+        showGate();
+        throw new Error('Please enter your course password again. Your answers are still here.');
+      }
+      showRetry();
+      throw new Error('We couldn’t connect just now. Your answers are still here. Please try again.');
     }).finally(() => { renewal = null; });
     return renewal;
   }
@@ -137,6 +178,7 @@
   };
 
   const showGate = () => {
+    hideRetry();
     if (document.querySelector('.access-gate')) return;
     document.body.dataset.access = 'locked';
     document.body.classList.add('access-locked');
@@ -175,18 +217,19 @@
       button.disabled = true;
       button.textContent = 'Opening…';
       const code = input.value.trim();
-      const submittedHash = await digest(code);
-      if (submittedHash !== expectedHash) {
-        error.textContent = 'That password does not match. Please try again.';
-        input.select();
-        button.disabled = false;
-        button.textContent = 'Continue';
-        return;
-      }
       try {
         const access = await authorize(code);
         setAccess(access.accessToken, access.deviceToken, access.expiresIn);
       } catch (accessError) {
+        if (accessError && accessError.explicit) {
+          error.textContent = /too many/i.test(accessError.message || '')
+            ? 'Too many tries. Please wait a few minutes and try again.'
+            : 'That password does not match. Please try again.';
+          input.select();
+          button.disabled = false;
+          button.textContent = 'Continue';
+          return;
+        }
         error.textContent = 'We could not connect to your course. Your saved answers are safe. Check your connection and try again.';
         button.disabled = false;
         button.textContent = 'Try again';
@@ -198,15 +241,44 @@
     });
   };
 
+  // No answer from the course service: the browser stays remembered and no password is asked for.
+  function showRetry() {
+    if (document.querySelector('.access-gate:not(.access-retry)')) return;
+    window.clearTimeout(retryTimer);
+    retryTimer = window.setTimeout(() => { ensureFreshAccess(true).catch(() => {}); }, 20000);
+    if (document.querySelector('.access-retry')) return;
+    const pending = document.documentElement.classList.contains('access-pending');
+    const card = document.createElement('div');
+    card.className = pending ? 'access-gate access-retry' : 'access-retry access-retry-banner';
+    card.setAttribute('role', pending ? 'dialog' : 'status');
+    card.setAttribute('aria-live', 'polite');
+    card.innerHTML = `
+      <div class="access-card">
+        <p class="access-kicker">Ettore · SAT Reading & Writing</p>
+        <h1>We couldn’t connect just now</h1>
+        <p>Your saved answers are safe. Check your connection, then try again.</p>
+        <div class="access-row"><button type="button">Try again</button></div>
+      </div>`;
+    document.body.append(card);
+    document.documentElement.classList.remove('access-pending');
+    const button = card.querySelector('button');
+    button.addEventListener('click', () => {
+      button.disabled = true;
+      button.textContent = 'Connecting…';
+      ensureFreshAccess(true).catch(() => { button.disabled = false; button.textContent = 'Try again'; });
+    });
+    if (pending) button.focus();
+  }
+
+  function hideRetry() {
+    window.clearTimeout(retryTimer);
+    document.querySelector('.access-retry')?.remove();
+  }
+
   const trustedDevice = consumeTrustedDevice() || getDeviceToken();
   if (trustedDevice) {
-    renewAccess(trustedDevice).then((access) => {
-      setAccess(access.accessToken, trustedDevice, access.expiresIn);
-      reveal();
-      resolveReady();
-    }).catch(() => {
-      showGate();
-    });
+    if (trustedDevice !== getDeviceToken()) writeStorage(window.localStorage, deviceTokenKey, trustedDevice);
+    ensureFreshAccess(true).catch(() => {});
     return;
   }
 

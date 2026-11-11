@@ -64,7 +64,8 @@
 
       const target = new URL(data.contentUrl);
       if (target.protocol !== 'https:' || target.hostname !== 'script.google.com') throw new Error('This handout could not be opened.');
-      target.searchParams.set('accessToken', accessToken);
+      // The address carries a one-use opening key from the course service, never the access token (2026-11-11).
+      target.searchParams.delete('accessToken');
       window.location.replace(target.toString());
     } catch (error) {
       showState('error', 'We couldn’t open this handout right now. Please go back to the class page and try again later.');
